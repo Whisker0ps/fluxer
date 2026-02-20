@@ -140,6 +140,12 @@ def print_table(results: Iterable[CheckResult]) -> None:
 def main() -> int:
 	parser = argparse.ArgumentParser(description="Fluxer prereq checker (Rocky/RHEL)")
 	parser.add_argument("--json", action="store_true", help="Output JSON instead of a table")
+	parser.add_argument(
+		"--mode",
+		choices=("container", "build", "all"),
+		default="container",
+		help="Check container-only runtime (default), host build toolchain, or all",
+	)
 	args = parser.parse_args()
 
 	is_root = False
@@ -148,7 +154,7 @@ def main() -> int:
 	except AttributeError:
 		is_root = False
 
-	requirements = [
+	container_requirements = [
 		Requirement("podman", ("podman",), ("podman",), None, ("podman", "--version"), r"podman\s+([0-9.]+)"),
 		Requirement("podman-compose", ("podman-compose",), ("podman-compose",), None, ("podman-compose", "--version"), r"([0-9.]+)"),
 		Requirement("httpd", ("httpd",), ("httpd",), None, ("httpd", "-v"), r"Apache/([0-9.]+)"),
@@ -156,6 +162,9 @@ def main() -> int:
 		Requirement("mod_md", ("mod_md",), (), None, None, None),
 		Requirement("git", ("git",), ("git",), None, ("git", "--version"), r"([0-9.]+)"),
 		Requirement("curl", ("curl",), ("curl",), None, ("curl", "--version"), r"curl\s+([0-9.]+)"),
+	]
+
+	build_requirements = [
 		Requirement("node", ("nodejs",), ("node",), "24.0.0", ("node", "--version"), r"v([0-9.]+)"),
 		Requirement("pnpm", (), ("pnpm",), "10.29.3", ("pnpm", "--version"), r"([0-9.]+)"),
 		Requirement("erlang", ("erlang",), ("erl",), "28.0.0", ("erl", "-version"), r"([0-9.]+)"),
@@ -175,16 +184,25 @@ def main() -> int:
 		Requirement("libssl-dev", ("openssl-devel",), (), None, None, None),
 	]
 
+	if args.mode == "container":
+		requirements = container_requirements
+	elif args.mode == "build":
+		requirements = build_requirements
+	else:
+		requirements = container_requirements + build_requirements
+
 	results = [check_requirement(r) for r in requirements]
 
 	if args.json:
 		payload = {
 			"root": is_root,
+			"mode": args.mode,
 			"results": [r.__dict__ for r in results],
 		}
 		print(json.dumps(payload, indent=2))
 	else:
 		print(f"Running as root: {'yes' if is_root else 'no'}")
+		print(f"Mode: {args.mode}")
 		print_table(results)
 
 	missing = [r for r in results if r.status == "missing"]

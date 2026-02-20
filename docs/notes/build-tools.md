@@ -1,6 +1,15 @@
 # Fluxer build/tooling notes (Stage 1)
 
-## Toolchain and package managers
+## Container build toolchain (Podman image build)
+- Node.js 24 image (base for build stages).
+- Rust 1.93.0 + wasm-pack 0.14.0 (required for fluxer_app wasm build).
+- pnpm 10.26.0 (activated in Dockerfile for build stages).
+- FLUXER_CONFIG must be set during fluxer_app build (rspack config requires a JSON path).
+- `.dockerignore` must allow:
+  - `fluxer_app/src/data/emojis.json`
+  - `fluxer_app/scripts/build/**`
+
+## Toolchain and package managers (repo)
 - Node.js: >= 24 (root .nvmrc is 24; fluxer_server engines >= 24.0.0).
 - pnpm: 10.29.3 (root package.json packageManager).
 - Turborepo: used for build/lint/test orchestration (turbo.json).
@@ -13,7 +22,7 @@
 - Erlang/OTP + rebar3: required for fluxer_gateway and fluxer_relay (rebar.config present).
 
 ## Build/deployment pathways detected
-- Docker/Compose: compose.yaml provides a production-ish baseline (fluxer_server + valkey, optional meilisearch/livekit).
+- Podman/Compose: local image build + podman-compose (current self-hosting path).
 - Nix/devenv: README says development is supported via devenv only.
 
 ## Known scripts (root)

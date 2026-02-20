@@ -3,7 +3,7 @@
 ## Target environment
 - Linux server with systemd (tested target for docs).
 - Dedicated service user (e.g., `fluxer`) and home directory for configs and data.
-- Container runtime: Podman + podman-compose (rootless) OR Docker + Compose.
+- Container runtime: Podman + podman-compose (rootless) (chosen path).
 - Known deployment OS: Rocky Linux 9.7 (RHEL 9 family).
 
 ## Hardware guidance (small deployment)
@@ -32,7 +32,7 @@ Optional (enable as needed):
 - SQLite is supported and intended for dev/single-node installs.
 - Cassandra is the production backend option.
 - For the stated small deployment, SQLite may be sufficient, but confirm with real-world testing.
- - MySQL/Postgres are not supported in the current codebase; consider future work if needed.
+- MySQL/Postgres are not supported in the current codebase; consider future work if needed.
 
 ## Network and ports (baseline)
 - 8080/tcp: fluxer_server HTTP
@@ -46,7 +46,7 @@ Optional (enable as needed):
 - Must pass WebSocket traffic for gateway and any WS endpoints.
 
 ## Rocky Linux 9.7 package prereqs (draft)
-Two common paths are supported: container-only runtime, or building from source on the host.
+This doc assumes container-only runtime. Host build toolchains are not required.
 
 Container-only runtime (recommended):
 - podman
@@ -64,7 +64,7 @@ Rocky 9.7 dnf example (container-only runtime):
 - Install packages:
   - `sudo dnf -y install podman podman-compose git curl httpd mod_ssl mod_md`
 
-Build-from-source (host toolchain):
+Build-from-source (host toolchain) (optional, not required for Podman-only):
 - Node.js 24.x + corepack/pnpm
 - build toolchain: gcc, g++, make, python3
 - OpenSSL + headers (dev package)
