@@ -11,10 +11,19 @@ RUN corepack enable && corepack prepare pnpm@10.26.0 --activate
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	curl \
+	ca-certificates \
 	python3 \
 	make \
 	g++ \
 	&& rm -rf /var/lib/apt/lists/*
+
+# Rust toolchain for fluxer_app wasm build (via wasm-pack)
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:$PATH
+
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.93.0 && \
+	cargo install wasm-pack --version 0.14.0
 
 FROM base AS deps
 
@@ -23,37 +32,7 @@ COPY pnpm-lock.yaml ./
 COPY package.json ./
 COPY patches/ ./patches/
 
-COPY packages/admin/package.json ./packages/admin/
-COPY packages/api/package.json ./packages/api/
-COPY packages/app/package.json ./packages/app/
-COPY packages/cache/package.json ./packages/cache/
-COPY packages/captcha/package.json ./packages/captcha/
-COPY packages/cassandra/package.json ./packages/cassandra/
-COPY packages/config/package.json ./packages/config/
-COPY packages/constants/package.json ./packages/constants/
-COPY packages/email/package.json ./packages/email/
-COPY packages/errors/package.json ./packages/errors/
-COPY packages/hono/package.json ./packages/hono/
-COPY packages/hono_types/package.json ./packages/hono_types/
-COPY packages/initialization/package.json ./packages/initialization/
-COPY packages/ip_utils/package.json ./packages/ip_utils/
-COPY packages/logger/package.json ./packages/logger/
-COPY packages/marketing/package.json ./packages/marketing/
-COPY packages/media_proxy/package.json ./packages/media_proxy/
-COPY packages/oauth2/package.json ./packages/oauth2/
-COPY packages/queue/package.json ./packages/queue/
-COPY packages/rate_limit/package.json ./packages/rate_limit/
-COPY packages/s3/package.json ./packages/s3/
-COPY packages/sentry/package.json ./packages/sentry/
-COPY packages/sms/package.json ./packages/sms/
-COPY packages/snowflake/package.json ./packages/snowflake/
-COPY packages/telemetry/package.json ./packages/telemetry/
-COPY packages/ui/package.json ./packages/ui/
-COPY packages/validation/package.json ./packages/validation/
-COPY packages/virus_scan/package.json ./packages/virus_scan/
-COPY packages/worker/package.json ./packages/worker/
-COPY packages/http_client/package.json ./packages/http_client/
-COPY packages/schema/package.json ./packages/schema/
+COPY packages/ ./packages/
 COPY fluxer_server/package.json ./fluxer_server/
 COPY fluxer_app/package.json ./fluxer_app/
 
@@ -97,7 +76,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -fsSL https://github.com/erlang/rebar3/releases/download/3.24.0/rebar3 -o /usr/local/bin/rebar3 && \
 	chmod +x /usr/local/bin/rebar3
 
-COPY fluxer_gateway/rebar.config fluxer_gateway/rebar.lock* ./
+COPY fluxer_gateway/rebar.config ./
 RUN rebar3 compile --deps_only
 
 COPY fluxer_gateway/. ./fluxer_gateway
@@ -110,9 +89,11 @@ FROM deps AS app-build
 COPY tsconfigs /usr/src/app/tsconfigs
 
 COPY packages/ ./packages/
+COPY config/ ./config/
 COPY fluxer_app/ ./fluxer_app/
 
-RUN cd fluxer_app && pnpm build
+RUN cd fluxer_app && pnpm i18n:compile && pnpm generate:emoji-sprites
+RUN cd fluxer_app && FLUXER_CONFIG=config/config.production.template.json pnpm build
 
 FROM node:24-trixie-slim AS production
 
