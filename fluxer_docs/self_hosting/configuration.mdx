@@ -408,7 +408,7 @@ JSON path: `domain`
 Configuration for domains and ports used to construct public URLs.
 
 <Note>
-When self-hosting: to have the web app use your domain for static assets (scripts, fonts, favicons) and avoid CSP errors, create `config/config.json` with `domain.base_domain` set to your public host **before** building the Docker image. The app build reads this via `FLUXER_CONFIG` and bakes the static CDN URL into the built app.
+When self-hosting: the static CDN URL (scripts, fonts, favicons) is set at **runtime** from your config (`domain.base_domain`, `endpoint_overrides.static_cdn`, etc.). The same image works for any domain; you do not need to put your config in the repo or build with your domain.
 </Note>
 
 | Property | Type | Description |

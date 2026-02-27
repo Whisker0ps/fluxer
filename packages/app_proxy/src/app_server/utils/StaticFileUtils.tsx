@@ -29,10 +29,17 @@ export function isPathSafe(filePath: string, resolvedStaticDir: string): boolean
 	return filePath.startsWith(resolvedStaticDir);
 }
 
+const STATIC_CDN_PLACEHOLDER = '{{STATIC_CDN}}';
+
+/** Request paths that may contain {{STATIC_CDN}} and are rewritten at runtime. */
+const STATIC_FILES_WITH_PLACEHOLDER = ['/manifest.json', '/browserconfig.xml'];
+
 export interface ServeStaticFileOptions {
 	requestPath: string;
 	resolvedStaticDir: string;
 	logger: Logger;
+	/** When set, replaces {{STATIC_CDN}} in manifest.json and browserconfig.xml. */
+	staticCdnEndpoint?: string;
 }
 
 export type ServeStaticFileResult =
@@ -40,7 +47,7 @@ export type ServeStaticFileResult =
 	| {success: false; error?: string};
 
 export function serveStaticFile(options: ServeStaticFileOptions): ServeStaticFileResult {
-	const {requestPath, resolvedStaticDir, logger} = options;
+	const {requestPath, resolvedStaticDir, logger, staticCdnEndpoint} = options;
 	const filePath = join(resolvedStaticDir, requestPath);
 
 	if (!isPathSafe(filePath, resolvedStaticDir)) {
@@ -53,7 +60,20 @@ export function serveStaticFile(options: ServeStaticFileOptions): ServeStaticFil
 	}
 
 	try {
-		const content = readFileSync(filePath);
+		const normalizedPath = requestPath.startsWith('/') ? requestPath : `/${requestPath}`;
+		const shouldReplacePlaceholder =
+			staticCdnEndpoint !== undefined &&
+			staticCdnEndpoint !== '' &&
+			STATIC_FILES_WITH_PLACEHOLDER.includes(normalizedPath);
+
+		let content: Buffer;
+		if (shouldReplacePlaceholder) {
+			const text = readFileSync(filePath, 'utf-8');
+			content = Buffer.from(text.replaceAll(STATIC_CDN_PLACEHOLDER, staticCdnEndpoint), 'utf-8');
+		} else {
+			content = readFileSync(filePath);
+		}
+
 		const mimeType = getMimeType(requestPath);
 		const cacheControl = isHashedAsset(requestPath)
 			? 'public, max-age=31536000, immutable'
@@ -70,6 +90,8 @@ export interface ServeSpaFallbackOptions {
 	resolvedStaticDir: string;
 	cspDirectives?: CSPOptions;
 	logger: Logger;
+	/** Base URL for static CDN (scripts, fonts, favicons). Replaces {{STATIC_CDN}} in index.html. */
+	staticCdnEndpoint?: string;
 }
 
 export type ServeSpaFallbackResult =
@@ -77,7 +99,7 @@ export type ServeSpaFallbackResult =
 	| {success: false; error: string};
 
 export function serveSpaFallback(options: ServeSpaFallbackOptions): ServeSpaFallbackResult {
-	const {resolvedStaticDir, cspDirectives, logger} = options;
+	const {resolvedStaticDir, cspDirectives, logger, staticCdnEndpoint} = options;
 	const indexPath = join(resolvedStaticDir, 'index.html');
 
 	if (!existsSync(indexPath)) {
@@ -91,6 +113,9 @@ export function serveSpaFallback(options: ServeSpaFallbackOptions): ServeSpaFall
 
 		let indexContent = readFileSync(indexPath, 'utf-8');
 		indexContent = indexContent.replaceAll('{{CSP_NONCE_PLACEHOLDER}}', nonce);
+		if (staticCdnEndpoint !== undefined && staticCdnEndpoint !== '') {
+			indexContent = indexContent.replaceAll('{{STATIC_CDN}}', staticCdnEndpoint);
+		}
 
 		return {success: true, content: indexContent, nonce, csp};
 	} catch (err) {

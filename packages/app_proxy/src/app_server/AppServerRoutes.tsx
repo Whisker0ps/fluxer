@@ -29,11 +29,12 @@ interface RegisterAppServerRoutesOptions {
 	assetVersion?: string;
 	cspDirectives?: CSPOptions;
 	logger: Logger;
+	staticCdnEndpoint?: string;
 	staticDir: string;
 }
 
 export function registerAppServerRoutes(options: RegisterAppServerRoutesOptions): void {
-	const {app, assetVersion, cspDirectives, logger, staticDir} = options;
+	const {app, assetVersion, cspDirectives, logger, staticCdnEndpoint, staticDir} = options;
 
 	app.get('/_health', (c) => c.text('OK'));
 
@@ -46,5 +47,6 @@ export function registerAppServerRoutes(options: RegisterAppServerRoutesOptions)
 		staticDir,
 		cspDirectives,
 		logger,
+		staticCdnEndpoint,
 	});
 }

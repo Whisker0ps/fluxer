@@ -36,6 +36,8 @@ export interface AppServerOptions {
 	telemetry?: AppTelemetryOptions;
 	env?: string;
 	captureException?: (error: Error, context?: Record<string, unknown>) => void;
+	/** Base URL for static CDN; replaces {{STATIC_CDN}} in index.html and must be allowed in CSP. */
+	staticCdnEndpoint?: string;
 }
 
 export interface AppServerResult {

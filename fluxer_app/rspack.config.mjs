@@ -21,13 +21,7 @@ import {execSync} from 'node:child_process';
 import fs from 'node:fs';
 import path, {dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {
-	CopyRspackPlugin,
-	DefinePlugin,
-	HtmlRspackPlugin,
-	SwcJsMinimizerRspackPlugin,
-	sources,
-} from '@rspack/core';
+import {CopyRspackPlugin, DefinePlugin, HtmlRspackPlugin, SwcJsMinimizerRspackPlugin} from '@rspack/core';
 import {createPoFileRule, getLinguiSwcPluginConfig} from './scripts/build/rspack/lingui.mjs';
 import {staticFilesPlugin} from './scripts/build/rspack/static-files.mjs';
 
@@ -41,40 +35,24 @@ const DIST_DIR = path.join(ROOT_DIR, 'dist');
 const PKGS_DIR = path.join(ROOT_DIR, 'pkgs');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'assets');
 
-const DEFAULT_STATIC_CDN = 'https://fluxerstatic.com';
+/** Placeholder in built assets; replaced at runtime when serving index.html and static files. */
+const STATIC_CDN_PLACEHOLDER = '{{STATIC_CDN}}';
 
 /**
- * Returns the static CDN base URL for scripts/assets. If FLUXER_CONFIG is set, reads that JSON,
- * derives the static CDN from domain and endpoint_overrides (same logic as deriveEndpointsFromDomain).
- * On any error or missing config, returns DEFAULT_STATIC_CDN. Never throws.
+ * Returns the static CDN base URL for scripts/assets at build time.
+ * - If FLUXER_STATIC_CDN_URL is set (e.g. for official/CI builds), returns that URL.
+ * - Otherwise returns STATIC_CDN_PLACEHOLDER so the build is domain-agnostic; the server
+ *   replaces it at runtime from config. Never throws.
  */
 function getStaticCdnEndpoint() {
-	const configPath = process.env.FLUXER_CONFIG;
-	if (!configPath) {
-		return DEFAULT_STATIC_CDN;
+	const envUrl = process.env.FLUXER_STATIC_CDN_URL;
+	if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+		const trimmed = envUrl.trim();
+		if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+			return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+		}
 	}
-	try {
-		const resolvedPath = path.isAbsolute(configPath) ? configPath : path.resolve(MONOREPO_ROOT, configPath);
-		const content = fs.readFileSync(resolvedPath, 'utf-8');
-		const parsed = JSON.parse(content);
-		if (!isPlainObject(parsed)) {
-			return DEFAULT_STATIC_CDN;
-		}
-		const domain = getValue(parsed, ['domain'], {});
-		const overrides = getValue(parsed, ['endpoint_overrides'], {});
-		const baseDomain = asString(domain?.base_domain);
-		if (!baseDomain || !baseDomain.trim()) {
-			return DEFAULT_STATIC_CDN;
-		}
-		const endpoints = deriveEndpointsFromDomain(domain, overrides);
-		const staticCdn = asString(endpoints?.staticCdn);
-		if (!staticCdn || !staticCdn.startsWith('http')) {
-			return DEFAULT_STATIC_CDN;
-		}
-		return staticCdn;
-	} catch {
-		return DEFAULT_STATIC_CDN;
-	}
+	return STATIC_CDN_PLACEHOLDER;
 }
 
 function resolveMode() {
@@ -481,29 +459,6 @@ export default () => {
 			}),
 
 			staticFilesPlugin({staticCdnEndpoint}),
-
-			// Replace {{STATIC_CDN}} in emitted index.html with the derived static CDN base URL
-			{
-				apply(compiler) {
-					compiler.hooks.thisCompilation.tap('StaticCdnPlaceholderPlugin', (compilation) => {
-						compilation.hooks.processAssets.tap(
-							{
-								name: 'StaticCdnPlaceholderPlugin',
-								stage: compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
-							},
-							() => {
-								const asset = compilation.getAsset('index.html');
-								if (!asset) return;
-								const raw = asset.source.source();
-								const html = typeof raw === 'string' ? raw : new TextDecoder().decode(raw);
-								if (!html.includes('{{STATIC_CDN}}')) return;
-								const newHtml = html.replaceAll('{{STATIC_CDN}}', staticCdnEndpoint);
-								compilation.updateAsset('index.html', new sources.RawSource(newHtml), asset.info);
-							},
-						);
-					});
-				},
-			},
 
 			new DefinePlugin({
 				'process.env.NODE_ENV': JSON.stringify(mode),

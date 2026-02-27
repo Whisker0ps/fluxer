@@ -92,6 +92,8 @@ COPY packages/ ./packages/
 COPY config/ ./config/
 COPY fluxer_app/ ./fluxer_app/
 
+# Config required for build (bootstrap API etc.); template used if config.json missing.
+# Static CDN URL is domain-agnostic (placeholder); server replaces it at runtime from mounted config.
 RUN if [ ! -f config/config.json ]; then cp config/config.production.template.json config/config.json; fi
 
 ENV FLUXER_CONFIG=/usr/src/app/config/config.json

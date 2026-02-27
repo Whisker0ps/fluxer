@@ -277,24 +277,29 @@ function createAppServerInitializer(context: ServiceInitializationContext): Serv
 
 	const publicUrlHost = new URL(requireValue(config.endpoints.app, 'endpoints.app')).origin;
 	const mediaUrlHost = new URL(requireValue(config.endpoints.media, 'endpoints.media')).origin;
+	const staticCdnEndpoint = requireValue(config.endpoints.static_cdn, 'endpoints.static_cdn');
+	const staticCdnOrigin = new URL(staticCdnEndpoint).origin;
 
 	const appServer = createAppServer({
 		staticDir,
 		logger: componentLogger,
 		env: config.env,
+		staticCdnEndpoint,
 		telemetry: {
 			metricsCollector: telemetry.metricsCollector,
 			tracing: telemetry.tracing,
 		},
 		cspDirectives: {
 			defaultSrc: ["'self'"],
-			scriptSrc: ["'self'", "'unsafe-inline'"],
-			styleSrc: ["'self'", "'unsafe-inline'"],
-			imgSrc: ["'self'", 'data:', 'blob:', publicUrlHost, mediaUrlHost],
+			scriptSrc: ["'self'", "'unsafe-inline'", staticCdnOrigin],
+			styleSrc: ["'self'", "'unsafe-inline'", staticCdnOrigin],
+			imgSrc: ["'self'", 'data:', 'blob:', publicUrlHost, mediaUrlHost, staticCdnOrigin],
 			connectSrc: ["'self'", 'wss:', 'ws:', publicUrlHost],
-			fontSrc: ["'self'"],
+			fontSrc: ["'self'", staticCdnOrigin],
 			mediaSrc: ["'self'", 'blob:', mediaUrlHost],
 			frameSrc: ["'none'"],
+			workerSrc: ["'self'", 'blob:', staticCdnOrigin],
+			manifestSrc: ["'self'", staticCdnOrigin],
 		},
 	});
 

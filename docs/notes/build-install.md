@@ -32,8 +32,8 @@ podman build --no-cache -f fluxer_server/Dockerfile -t fluxer-server:local .
 
 Build notes:
 - The Dockerfile installs Rust + wasm-pack for the web client build.
-- The web client build requires `FLUXER_CONFIG` and generates i18n + emoji assets.
-- For the web app to use your domain for static assets and avoid CSP issues, create `config/config.json` first (with `domain.base_domain` set to your public host) before building the Docker image, so the app build can read it via `FLUXER_CONFIG`. If `config.json` is missing, the build copies the production template so the image still builds.
+- The web client build requires `FLUXER_CONFIG` and generates i18n + emoji assets. If `config.json` is missing, the build copies the production template so the image still builds.
+- The app build is domain-agnostic for static assets: script and asset URLs use a placeholder that the server replaces at runtime from your mounted config (`domain.base_domain`, etc.). You do not need to put your config or domain in the repo to build.
 - Podman defaults to OCI format; HEALTHCHECK is ignored unless you build with `--format docker`.
 
 Dockerignore exceptions used for build:

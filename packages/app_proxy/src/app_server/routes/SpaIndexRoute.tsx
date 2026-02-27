@@ -31,16 +31,23 @@ export interface SpaIndexRouteOptions {
 	staticDir: string;
 	cspDirectives?: CSPOptions;
 	logger: Logger;
+	/** Base URL for static CDN; replaces {{STATIC_CDN}} in index.html when serving SPA fallback. */
+	staticCdnEndpoint?: string;
 }
 
 export function createSpaIndexRoute<E extends Env>(app: Hono<E>, options: SpaIndexRouteOptions): void {
-	const {cspDirectives, logger, staticDir} = options;
+	const {cspDirectives, logger, staticCdnEndpoint, staticDir} = options;
 
 	app.get('*', (c) => {
 		const requestPath = c.req.path;
 
 		if (isStaticAsset(requestPath)) {
-			const result = serveStaticFile({requestPath, resolvedStaticDir: staticDir, logger});
+			const result = serveStaticFile({
+				requestPath,
+				resolvedStaticDir: staticDir,
+				logger,
+				staticCdnEndpoint,
+			});
 			if (!result.success) {
 				if (result.error) {
 					return c.text(result.error, 500);
@@ -55,7 +62,12 @@ export function createSpaIndexRoute<E extends Env>(app: Hono<E>, options: SpaInd
 			});
 		}
 
-		const fallbackResult = serveSpaFallback({resolvedStaticDir: staticDir, cspDirectives, logger});
+		const fallbackResult = serveSpaFallback({
+			resolvedStaticDir: staticDir,
+			cspDirectives,
+			logger,
+			staticCdnEndpoint,
+		});
 		if (!fallbackResult.success) {
 			return c.text(fallbackResult.error, 500);
 		}

@@ -24,7 +24,8 @@ import {registerAppServerRoutes} from '@fluxer/app_proxy/src/app_server/AppServe
 import {Hono} from 'hono';
 
 export function createAppServer(options: AppServerOptions): AppServerResult {
-	const {assetVersion, captureException, cspDirectives, env, logger, staticDir, telemetry} = options;
+	const {assetVersion, captureException, cspDirectives, env, logger, staticCdnEndpoint, staticDir, telemetry} =
+		options;
 	const resolvedStaticDir = resolve(staticDir);
 	const app = new Hono<HonoEnv>({strict: true});
 
@@ -41,6 +42,7 @@ export function createAppServer(options: AppServerOptions): AppServerResult {
 		assetVersion,
 		cspDirectives,
 		logger,
+		staticCdnEndpoint,
 		staticDir: resolvedStaticDir,
 	});
 
