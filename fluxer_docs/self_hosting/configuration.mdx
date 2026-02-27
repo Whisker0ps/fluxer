@@ -407,6 +407,10 @@ JSON path: `domain`
 
 Configuration for domains and ports used to construct public URLs.
 
+<Note>
+When self-hosting: to have the web app use your domain for static assets (scripts, fonts, favicons) and avoid CSP errors, create `config/config.json` with `domain.base_domain` set to your public host **before** building the Docker image. The app build reads this via `FLUXER_CONFIG` and bakes the static CDN URL into the built app.
+</Note>
+
 | Property | Type | Description |
 |----------|------|-------------|
 | base_domain | string | The primary domain name (e.g., example.com, localhost). |

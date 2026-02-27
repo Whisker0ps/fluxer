@@ -92,8 +92,12 @@ COPY packages/ ./packages/
 COPY config/ ./config/
 COPY fluxer_app/ ./fluxer_app/
 
+RUN if [ ! -f config/config.json ]; then cp config/config.production.template.json config/config.json; fi
+
+ENV FLUXER_CONFIG=/usr/src/app/config/config.json
+
 RUN cd fluxer_app && pnpm i18n:compile && pnpm generate:emoji-sprites
-RUN cd fluxer_app && FLUXER_CONFIG=config/config.production.template.json pnpm build
+RUN cd fluxer_app && pnpm build
 
 FROM node:24-trixie-slim AS production
 
