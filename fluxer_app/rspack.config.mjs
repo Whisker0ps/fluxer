@@ -243,10 +243,16 @@ function getPublicEnvVar(values, name) {
 
 export default () => {
 	const staticCdnEndpoint = getStaticCdnEndpoint();
+	const isDomainAgnostic = staticCdnEndpoint === STATIC_CDN_PLACEHOLDER;
 	const linguiSwcPlugin = getLinguiSwcPluginConfig();
 	const config = readConfig();
 	const appPublic = resolveAppPublic(config);
 	const buildMetadata = resolveBuildMetadata();
+	// Domain-agnostic build: use relative endpoints so the client uses the page origin (CSP 'self').
+	const bootstrapApiEndpoint = isDomainAgnostic ? '/api' : appPublic.bootstrapApiEndpoint;
+	const bootstrapApiPublicEndpoint = isDomainAgnostic
+		? '/api'
+		: (appPublic.bootstrapApiPublicEndpoint ?? appPublic.bootstrapApiEndpoint);
 	const publicValues = {
 		PUBLIC_BUILD_SHA: buildMetadata.buildSha,
 		PUBLIC_BUILD_NUMBER: buildMetadata.buildNumber,
@@ -254,8 +260,8 @@ export default () => {
 		PUBLIC_RELEASE_CHANNEL: buildMetadata.releaseChannel,
 		PUBLIC_SENTRY_DSN: appPublic.sentryDsn ?? null,
 		PUBLIC_API_VERSION: appPublic.apiVersion,
-		PUBLIC_BOOTSTRAP_API_ENDPOINT: appPublic.bootstrapApiEndpoint,
-		PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT: appPublic.bootstrapApiPublicEndpoint ?? appPublic.bootstrapApiEndpoint,
+		PUBLIC_BOOTSTRAP_API_ENDPOINT: bootstrapApiEndpoint,
+		PUBLIC_BOOTSTRAP_API_PUBLIC_ENDPOINT: bootstrapApiPublicEndpoint,
 		PUBLIC_RELAY_DIRECTORY_URL: appPublic.relayDirectoryUrl ?? null,
 	};
 
